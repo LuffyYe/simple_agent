@@ -9,7 +9,7 @@ import requests
 
 
 class SearchTool:
-    """Web search wrapper for SerpAPI or Bing."""
+    """Web search wrapper for SerpAPI."""
 
     def __init__(
         self,
