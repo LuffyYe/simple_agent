@@ -24,17 +24,6 @@ def create_agent(config: Config) -> CompanyAssistantAgent:
     # Initialize tool registry
     tool_registry = ToolRegistry()
 
-    # Register search tool
-    search_tool = SearchTool(
-        api_provider=config.search_provider,
-        api_key=config.search_api_key
-    )
-    tool_registry.register_tool(search_tool)
-
-    # Register safety tool
-    safety_tool = SafetyTool()
-    tool_registry.register_tool(safety_tool)
-
     # Create Agent
     agent = CompanyAssistantAgent(
         name="CompanyAssistant",
