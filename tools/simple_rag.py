@@ -363,40 +363,9 @@ class SimpleRAGTool:
         return self.search(query, limit=1, min_score=0.3)
 
     def run(self, params: Dict):
-        action = params.get("action", "search")
-
-        if action == "search":
-            return self.search(
-                query=params.get("query", ""),
-                limit=params.get("limit", 3),
-                min_score=params.get("min_score", 0.18),
-            )
-        if action == "add_text":
-            return self._add_text(params)
-        return {"status": "error", "message": f"Unsupported action: {action}", "matches": []}
-
-    def _add_text(self, params: Dict) -> Dict:
-        """Add a new text document to the knowledge base, with automatic section splitting and chunking, then rebuild the search index to include the new content."""
-        text = params.get("text", "")
-        document_id = params.get("document_id", f"doc_{len(self.documents)}")
-
-        if not text:
-            return {"status": "error", "message": "Text cannot be empty."}
-
-        sections = self._split_markdown_sections(document_id, text)
-        chunks: List[Dict] = []
-        for section in sections:
-            chunks.extend(self._chunk_section(document_id, "memory", section))
-
-        self.documents.append(
-            {
-                "id": document_id,
-                "filename": document_id,
-                "filepath": "memory",
-                "content": text,
-                "sections": sections,
-                "chunks": chunks,
-            }
+        return self.search(
+            query=params.get("query", ""),
+            limit=params.get("limit", 3),
+            min_score=params.get("min_score", 0.18),
         )
-        self._rebuild_index()
-        return {"status": "ok", "message": f"Successfully added document: {document_id}"}
+
