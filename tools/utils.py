@@ -5,7 +5,6 @@ Utility Functions Module
 import os
 import json
 import re
-import hashlib
 from typing import Dict, List, Optional
 from datetime import datetime
 
@@ -25,15 +24,6 @@ QUERY_ALIAS_EXPANSIONS = {
 }
 
 # ==================== File Operation Utilities ====================
-
-def read_markdown_file(filepath: str) -> str:
-    """Read content from a Markdown file"""
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return f.read()
-    except Exception as e:
-        print(f"Failed to read file {filepath}: {e}")
-        return ""
 
 def read_json_file(filepath: str) -> Optional[Dict]:
     """Read content from a JSON file"""
@@ -108,9 +98,7 @@ def normalize_query_text(text: str) -> str:
     if not text:
         return ""
 
-    normalized = text
-    normalized = strip_markdown(normalized)
-    normalized = normalized.lower()
+    normalized = strip_markdown(text).lower()
 
     for pattern, replacement in QUERY_ALIAS_EXPANSIONS.items():
         normalized = re.sub(pattern, replacement, normalized)
@@ -168,29 +156,11 @@ def format_response(response: str, source: str, metadata: Optional[Dict] = None)
     
     return result
 
-# ==================== Hash and ID Utilities ====================
-
-def generate_hash(text: str, length: int = 8) -> str:
-    """Generate hash value for text"""
-    return hashlib.md5(text.encode('utf-8')).hexdigest()[:length]
-
-def generate_document_id(content: str, filename: Optional[str] = None) -> str:
-    """Generate document ID"""
-    if filename:
-        base = f"{filename}:{generate_hash(content)}"
-    else:
-        base = generate_hash(content)
-    return f"doc_{base}"
-
 # ==================== Time Utilities ====================
 
 def get_timestamp() -> str:
     """Get current timestamp string"""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def get_date() -> str:
-    """Get current date string"""
-    return datetime.now().strftime("%Y-%m-%d")
 
 # ==================== Logging Utilities ====================
 
@@ -234,26 +204,6 @@ class Logger:
                     f.write(log + '\n')
             except:
                 pass
-
-# ==================== Configuration Utilities ====================
-
-def load_env_file(env_path: str = ".env") -> Dict[str, str]:
-    """Load environment variables from .env file"""
-    env_vars = {}
-    try:
-        with open(env_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    env_vars[key.strip()] = value.strip()
-    except FileNotFoundError:
-        pass
-    return env_vars
-
-def get_env(key: str, default: str = "") -> str:
-    """Get environment variable value"""
-    return os.getenv(key, default)
 
 # ==================== Conversation History Utilities ====================
 
