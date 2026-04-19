@@ -11,8 +11,6 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from hello_agents import HelloAgentsLLM, ToolRegistry
 from agent import CompanyAssistantAgent
-from tools.search_tool import SearchTool
-from tools.safety_tool import SafetyTool
 from config import Config
 
 
