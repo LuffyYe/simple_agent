@@ -14,7 +14,7 @@ Built for the **AI Engineer Technical Assignment** using Python & `hello_agents`
 | 🛡️ **Safety & Compliance** | Keyword-based policy engine blocks harmful/inappropriate queries **before** any LLM invocation |
 | ❓ **Clarification Engine** | Heuristic pattern detection + LLM fallback for vague, short, or pronoun-heavy queries |
 | 📚 **Local RAG** | Heading-aware Markdown chunking + `BM25` + `TF-IDF` hybrid retrieval (zero vector DB overhead) |
-| 🌐 **Web Search Fallback** | Unified SerpAPI/Bing wrapper with graceful degradation when API keys are missing |
+| 🌐 **Web Search Fallback** | Unified SerpAPI wrapper with graceful degradation when API keys are missing |
 | 📊 **Conversation & Metrics** | Turn-limited context memory, response-time tracking, and source distribution logging |
 
 ---
