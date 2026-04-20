@@ -1,11 +1,8 @@
 """
-Simple hybrid RAG for the local knowledge base.
-
-Uses heading-aware chunking plus BM25 and TF-IDF reranking.
+Compact hybrid RAG (BM25 + TF-IDF) for local Markdown knowledge base.
 """
 
-import os
-import re
+import os, re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -18,354 +15,202 @@ from tools.utils import clean_text, normalize_query_text, strip_markdown
 
 
 class SimpleRAGTool:
-    """
-    Local knowledge-base retriever with structured results.
+     """
+     Local knowledge-base retriever with structured results.
 
-    The retriever is optimized for a small Markdown knowledge base:
-    - split by headings
-    - chunk within sections
-    - lexical retrieval with BM25 + TF-IDF reranking
-    """
-
-    def __init__(
-        self,
-        name: str = "rag",
-        description: str = "Structured knowledge-base retrieval tool",
-        knowledge_base_path: str = "./knowledge_base",
-    ):
-        self.name = name
-        self.description = description
-        self.knowledge_base_path = knowledge_base_path
-        self.documents: List[Dict] = []
-        self.all_chunks: List[Dict] = []
+     The retriever is optimized for a small Markdown knowledge base:
+     - split by headings
+     - chunk within sections
+     - lexical retrieval with BM25 + TF-IDF reranking
+     """
+    def __init__(self, knowledge_base_path: str = "./knowledge_base"):
+        self.kb_path = knowledge_base_path
+        self.chunks: List[Dict] = []
         self.bm25: Optional[BM25Okapi] = None
         self.vectorizer: Optional[TfidfVectorizer] = None
-        self.tfidf_matrix = None
-
-        self._load_knowledge_base()
+        self.tfidf = None
+        self._load()
 
     def _tokenize(self, text: str) -> List[str]:
         """Simple whitespace + punctuation tokenizer with stop word removal."""
         tokens = re.findall(r"\b[a-z0-9']+\b", normalize_query_text(text))
-        filtered = [
-            token for token in tokens
-            if token not in ENGLISH_STOP_WORDS and len(token) > 1
-        ]
-        return filtered or [token for token in tokens if len(token) > 1]
+        tokens = [t for t in tokens if len(t) > 1]
+        return [t for t in tokens if t not in ENGLISH_STOP_WORDS] or tokens
 
-    def _clean_heading(self, heading: str) -> str:
-        """Clean heading text for better matching."""
-        cleaned = strip_markdown(heading)
-        cleaned = cleaned.replace(":", " ")
-        cleaned = re.sub(r"\s+", " ", cleaned)
-        return cleaned.strip()
-
-    def _clean_content(self, text: str) -> str:
-        """Clean content text for better retrieval and display."""
+    def _clean(self, text: str) -> str:
         text = strip_markdown(text)
         text = re.sub(r"^\s*[-*+]\s*", "", text, flags=re.MULTILINE)
         text = re.sub(r"^\s*\d+\.\s*", "", text, flags=re.MULTILINE)
         return clean_text(text)
 
-    def _split_markdown_sections(self, filename: str, text: str) -> List[Dict]:
+    def _split_md(self, filename: str, text: str) -> List[Dict]:
         """Split a Markdown document into sections based on headings, with fallback to whole text."""
-        fallback_title = Path(filename).stem.replace("_", " ")
-        heading_stack: List[str] = [fallback_title]
-        sections: List[Dict] = []
-        buffer: List[str] = []
-        in_code_block = False
+        title = Path(filename).stem.replace("_", " ")
+        stack, buf, sections = [title], [], []
+        in_code = False
 
-        def flush_buffer():
+        def flush():
             """Flush the current buffer into a section if it has content."""
-            content = self._clean_content("\n".join(buffer))
-            if not content:
-                return
-            sections.append(
-                {
-                    "heading_path": " / ".join(part for part in heading_stack if part),
-                    "content": content,
-                }
-            )
+            content = self._clean("\n".join(buf))
+            if content:
+                sections.append({
+                    "heading": " / ".join(stack),
+                    "content": content
+                })
 
-        for raw_line in text.splitlines():
-            line = raw_line.rstrip()
+        for line in text.splitlines():
             if line.strip().startswith("```"):
-                in_code_block = not in_code_block
+                in_code = not in_code
+                continue
+            if in_code:
+                buf.append(line); continue
+
+            m = re.match(r"^(#{1,6})\s+(.*)$", line.strip())
+            if m:
+                flush(); buf = []
+                level = len(m.group(1))
+                h = strip_markdown(m.group(2)).strip()
+                if not h: continue
+                stack = stack[:level-1] + [h]
                 continue
 
-            if in_code_block:
-                buffer.append(line)
-                continue
+            if not re.match(r"^\s*---+\s*$", line):
+                buf.append(line)
 
-            heading_match = re.match(r"^(#{1,6})\s+(.*)$", line.strip())
-            if heading_match:
-                flush_buffer()
-                buffer = []
+        flush()
+        return sections or [{"heading": title, "content": self._clean(text)}]
 
-                level = len(heading_match.group(1))
-                heading = self._clean_heading(heading_match.group(2))
-                if not heading:
-                    continue
-
-                if level == 1:
-                    heading_stack = [heading]
-                else:
-                    heading_stack = heading_stack[: level - 1]
-                    heading_stack.append(heading)
-                continue
-
-            if re.match(r"^\s*---+\s*$", line):
-                continue
-
-            buffer.append(line)
-
-        flush_buffer()
-
-        if not sections and text.strip():
-            sections.append(
-                {
-                    "heading_path": fallback_title,
-                    "content": self._clean_content(text),
-                }
-            )
-        return sections
-
-    def _chunk_section(
-        self,
-        filename: str,
-        filepath: str,
-        section: Dict,
-        chunk_size: int = 600,
-        overlap: int = 60,
-    ) -> List[Dict]:
+    def _chunk(self, file: str, path: str, section: Dict, size: int=600, overlap: int=60) -> List[Dict]:
         """Chunk a section into smaller pieces for better retrieval granularity, with some overlap for context preservation."""
         words = section["content"].split()
-        if not words:
-            return []
+        step = max(1, size - overlap)
+        out = []
 
-        chunks: List[Dict] = []
-        step = max(1, chunk_size - overlap)
-        for start in range(0, len(words), step):
-            chunk_words = words[start : start + chunk_size]
-            if not chunk_words:
-                continue
+        for i in range(0, len(words), step):
+            chunk = " ".join(words[i:i+size])
+            if not chunk: continue
+            search = f"{section['heading']} {chunk}"
+            out.append({
+                "filename": file,
+                "filepath": path,
+                "heading": section["heading"],
+                "content": chunk,
+                "norm": normalize_query_text(search),
+            })
+            if i + size >= len(words): break
+        return out
 
-            content = " ".join(chunk_words)
-            heading_path = section["heading_path"]
-            search_text = f"{heading_path} {content}"
-            chunks.append(
-                {
-                    "filename": filename,
-                    "filepath": filepath,
-                    "heading_path": heading_path,
-                    "content": content,
-                    "search_text": search_text,
-                    "normalized_search_text": normalize_query_text(search_text),
-                    "chunk_start": start,
-                }
-            )
-
-            if start + chunk_size >= len(words):
-                break
-
-        return chunks
-
-    def _load_knowledge_base(self):
+    def _load(self):
         """Load and preprocess the knowledge base from the specified directory, then build the search index."""
-        # print(f"[LOAD] Loading knowledge base from: {self.knowledge_base_path}")
-
-        if not os.path.exists(self.knowledge_base_path):
-            print("[WARNING] Knowledge base directory does not exist.")
+        if not os.path.exists(self.kb_path):
             return
 
-        for root, _, files in os.walk(self.knowledge_base_path):
-            for file in files:
-                if not file.endswith((".md", ".markdown", ".txt")):
-                    continue
-
-                filepath = os.path.join(root, file)
+        for root, _, files in os.walk(self.kb_path):
+            for f in files:
+                if not f.endswith((".md", ".txt", ".markdown")): continue
+                p = os.path.join(root, f)
                 try:
-                    with open(filepath, "r", encoding="utf-8") as handle:
-                        content = handle.read()
+                    text = open(p, encoding="utf-8").read()
+                    for sec in self._split_md(f, text):
+                        self.chunks += self._chunk(f, p, sec)
+                except:
+                    pass
 
-                    sections = self._split_markdown_sections(file, content)
-                    chunks: List[Dict] = []
-                    for section in sections:
-                        chunks.extend(self._chunk_section(file, filepath, section))
+        self._build_index()
 
-                    self.documents.append(
-                        {
-                            "id": f"{file}_{len(self.documents)}",
-                            "filename": file,
-                            "filepath": filepath,
-                            "content": content,
-                            "sections": sections,
-                            "chunks": chunks,
-                        }
-                    )
-                    # print(f"[LOAD] Loaded: {file} ({len(chunks)} chunks)")
-                except Exception as exc:
-                    print(f"[WARNING] Failed to load {file}: {exc}")
-
-        # print(f"[LOAD] Successfully loaded {len(self.documents)} documents.")
-        self._rebuild_index()
-
-    def _rebuild_index(self):
-        """Rebuild the BM25 and TF-IDF indices after loading or updating the knowledge base."""
-        self.all_chunks = []
-        for document in self.documents:
-            self.all_chunks.extend(document["chunks"])
-
-        if not self.all_chunks:
-            self.bm25 = None
-            self.vectorizer = None
-            self.tfidf_matrix = None
+    def _build_index(self):
+        """Build the BM25 and TF-IDF indices after loading or updating the knowledge base."""
+        if not self.chunks:
             return
 
-        tokenized_corpus = [self._tokenize(chunk["normalized_search_text"]) for chunk in self.all_chunks]
-        self.bm25 = BM25Okapi(tokenized_corpus)
+        corpus = [c["norm"] for c in self.chunks]
+        tokenized = [self._tokenize(x) for x in corpus]
+
+        self.bm25 = BM25Okapi(tokenized)
         self.vectorizer = TfidfVectorizer(ngram_range=(1, 2), stop_words="english")
-        self.tfidf_matrix = self.vectorizer.fit_transform(
-            [chunk["normalized_search_text"] for chunk in self.all_chunks]
-        )
-        # print(f"[INDEX] Search index built with {len(self.all_chunks)} total chunks.")
+        self.tfidf = self.vectorizer.fit_transform(corpus)
 
-    def _normalize_scores(self, scores) -> np.ndarray:
+    def _norm(self, x: np.ndarray[float]) -> np.ndarray:
         """Normalize an array of scores to the range [0, 1] by dividing by the maximum score, with clipping to handle edge cases."""
-        array = np.asarray(scores, dtype=float)
-        if array.size == 0:
-            return array
+        x = np.clip(np.asarray(x, float), 0, None)
+        return x / x.max() if x.size and x.max() > 0 else np.zeros_like(x)
 
-        array = np.clip(array, 0, None)
-        max_score = float(array.max())
-        if max_score <= 0:
-            return np.zeros_like(array)
-        return array / max_score
-
-    def _score_chunks(self, normalized_query: str) -> List[Dict]:
+    def _score(self, q: str) -> List[Dict]:
         """Score all chunks against the normalized query using a combination of BM25 and TF-IDF cosine similarity, with additional boosts for phrase matches and heading relevance."""
-        tokenized_query = self._tokenize(normalized_query)
-        if not tokenized_query or not self.bm25 or self.vectorizer is None or self.tfidf_matrix is None:
+        toks = self._tokenize(q)
+        if not toks or not self.bm25:
             return []
 
-        bm25_scores = self._normalize_scores(self.bm25.get_scores(tokenized_query))
-        tfidf_query = self.vectorizer.transform([normalized_query])
-        tfidf_scores = self._normalize_scores(cosine_similarity(tfidf_query, self.tfidf_matrix)[0])
+        bm = self._norm(self.bm25.get_scores(toks))
+        tf = self._norm(cosine_similarity(self.vectorizer.transform([q]), self.tfidf)[0])
 
-        scored_results: List[Dict] = []
-        for index, chunk in enumerate(self.all_chunks):
-            phrase_hits = 0
-            for term in set(tokenized_query):
-                if len(term) > 3 and term in chunk["normalized_search_text"]:
-                    phrase_hits += 1
+        results = []
+        for i, c in enumerate(self.chunks):
+            hit = sum(1 for t in set(toks) if len(t) > 3 and t in c["norm"])
+            phrase = min(0.15, hit * 0.02)
 
-            phrase_boost = min(0.15, phrase_hits * 0.02)
-            heading_overlap = len(set(tokenized_query) & set(self._tokenize(chunk["heading_path"])))
-            heading_boost = min(0.12, heading_overlap * 0.03)
-            filename_lower = chunk["filename"].lower()
-            file_boost = 0.0
-            if "policy" in normalized_query and "policies" in filename_lower:
-                file_boost += 0.08
-            if "guide" in normalized_query and "guide" in filename_lower:
-                file_boost += 0.05
+            head_overlap = len(set(toks) & set(self._tokenize(c["heading"])))
+            head_boost = min(0.12, head_overlap * 0.03)
 
-            score = float(
-                0.65 * bm25_scores[index]
-                + 0.35 * tfidf_scores[index]
-                + phrase_boost
-                + heading_boost
-                + file_boost
-            )
-            scored_results.append(
-                {
-                    **chunk,
-                    "score": round(score, 4),
-                }
-            )
+            file_boost = 0
+            fn = c["filename"].lower()
+            if "policy" in q and "policies" in fn: file_boost += 0.08
+            if "guide" in q and "guide" in fn: file_boost += 0.05
 
-        scored_results.sort(key=lambda item: item["score"], reverse=True)
-        return scored_results
+            score = 0.65 * bm[i] + 0.35 * tf[i] + phrase + head_boost + file_boost
 
-    def _select_matches(
-        self,
-        scored_results: List[Dict],
-        limit: int,
-        min_score: float = 0.18,
-    ) -> List[Dict]:
+            results.append({**c, "score": round(score, 4)})
+
+        return sorted(results, key=lambda x: x["score"], reverse=True)
+
+    def _select(self, scored: List[Dict], k: int, min_score: float) -> List[Dict]:
         """Select the top matching chunks based on score, with a minimum score threshold and deduplication by section to ensure diverse results."""
-        if not scored_results:
-            return []
+        if not scored: return []
 
-        top_score = scored_results[0]["score"]
-        minimum_relative_score = max(min_score, top_score * 0.55)
-        selected: List[Dict] = []
-        seen_sections = set()
+        top = scored[0]["score"]
+        thresh = max(min_score, top * 0.55)
 
-        for candidate in scored_results:
-            if candidate["score"] < minimum_relative_score:
-                continue
+        out, seen = [], set()
+        for c in scored:
+            if c["score"] < thresh: continue
+            key = (c["filename"], c["heading"])
+            if key in seen: continue
 
-            section_key = (candidate["filename"], candidate["heading_path"])
-            if section_key in seen_sections:
-                continue
+            seen.add(key)
+            out.append({
+                "filename": c["filename"],
+                "filepath": c["filepath"],
+                "heading_path": c["heading"],
+                "score": c["score"],
+                "content": c["content"],
+            })
+            if len(out) >= k: break
+        return out
 
-            seen_sections.add(section_key)
-            selected.append(
-                {
-                    "filename": candidate["filename"],
-                    "filepath": candidate["filepath"],
-                    "heading_path": candidate["heading_path"],
-                    "score": candidate["score"],
-                    "content": candidate["content"],
-                }
-            )
-
-            if len(selected) >= limit:
-                break
-    
-
-        return selected
-
-    def search(self, query: str, limit: int = 3, min_score: float = 0.18) -> Dict:
+    def search(self, query: str, limit: int=3, min_score: float=0.18) -> Dict:
         """Search the knowledge base for relevant sections based on the query, returning structured results with metadata and content."""
-        normalized_query = normalize_query_text(query)
-        if not normalized_query:
-            return {
-                "status": "empty_query",
-                "normalized_query": "",
-                "matches": [],
-            }
+        q = normalize_query_text(query)
+        if not q:
+            return {"status": "empty_query", "normalized_query": "", "matches": []}
+        if not self.bm25:
+            return {"status": "empty_kb", "normalized_query": q, "matches": []}
 
-        if not self.bm25 or not self.all_chunks:
-            return {
-                "status": "empty_kb",
-                "normalized_query": normalized_query,
-                "matches": [],
-            }
-
-        scored_results = self._score_chunks(normalized_query)
-        matches = self._select_matches(scored_results, limit=limit, min_score=min_score)
-        if not matches:
-            return {
-                "status": "no_match",
-                "normalized_query": normalized_query,
-                "matches": [],
-            }
+        scored = self._score(q)
+        matches = self._select(scored, limit, min_score)
 
         return {
-            "status": "ok",
-            "normalized_query": normalized_query,
+            "status": "ok" if matches else "no_match",
+            "normalized_query": q,
             "matches": matches,
         }
 
-    def probe(self, query: str) -> Dict:
+    def probe(self, query: str):
         """Cheap routing probe against the KB."""
         return self.search(query, limit=1, min_score=0.2)
 
     def run(self, params: Dict):
         return self.search(
-            query=params.get("query", ""),
-            limit=params.get("limit", 3),
-            min_score=params.get("min_score", 0.18),
+            params.get("query", ""),
+            params.get("limit", 3),
+            params.get("min_score", 0.18),
         )
-
