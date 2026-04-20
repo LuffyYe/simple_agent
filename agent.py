@@ -104,8 +104,6 @@ class CompanyAssistantAgent:
         if not search_api_key:
             print("[SEARCH] SearchTool registered in unavailable mode (missing SEARCH_API_KEY)")
         
-        # 4. RAG tool will be initialized in _init_rag
-        self.rag_tool = None
     
     def _init_utils(self, enable_logging: bool, log_dir: str):
         """Initialize utility components"""
