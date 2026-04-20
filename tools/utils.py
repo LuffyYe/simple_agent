@@ -148,11 +148,8 @@ def format_response(response: str, source: str, metadata: Optional[Dict] = None)
     result += f"\n\n >>>Source: {label}"
     
     # Add metadata if available
-    if metadata:
-        if metadata.get("confidence"):
-            result += f" (Confidence: {metadata['confidence']:.0%})"
-        if metadata.get("documents"):
-            result += f"\n >>>Reference Documents: {', '.join(metadata['documents'])}"
+    if metadata and metadata.get("documents"):
+        result += f"\n >>>Reference Documents: {', '.join(metadata['documents'])}"
     
     return result
 
