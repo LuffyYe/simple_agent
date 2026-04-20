@@ -360,7 +360,7 @@ class SimpleRAGTool:
 
     def probe(self, query: str) -> Dict:
         """Cheap routing probe against the KB."""
-        return self.search(query, limit=1, min_score=0.3)
+        return self.search(query, limit=1, min_score=0.2)
 
     def run(self, params: Dict):
         return self.search(
