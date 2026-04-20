@@ -26,6 +26,15 @@ from tools.utils import (
 
 
 class CompanyAssistantAgent:
+    """
+    Company Assistant Agent
+    
+    Built on hello-agents with extended capabilities:
+    - Intelligent query routing
+    - Safety filtering
+    - Clarification handling
+    - Multi-source knowledge support (RAG / search / intrinsic knowledge)
+    """
     def __init__(
         self,
         name="CompanyAssistant",
