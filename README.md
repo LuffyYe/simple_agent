@@ -187,10 +187,10 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
 
 | Choice | Rationale |
 |--------|-----------|
-| **Deterministic Routing First** | Avoids costly LLM-based routing decisions. Regex + keyword + lightweight KB probe reduces latency & token spend by ~40% in internal tests. |
+| **Deterministic Routing First** | Avoids costly LLM-based routing decisions. Regex + keyword + lightweight KB probe reduces latency & token spend. |
 | **Hybrid Lexical RAG (No Vector DB)** | `BM25 + TF-IDF` is faster, cheaper, and highly effective for structured Markdown. Heading-aware chunking preserves document context without embedding overhead or Pinecone/Weaviate setup. |
 | **Fail-Closed Safety & Search** | Blocks harmful queries before LLM invocation. Gracefully degrades web search if API keys are missing, ensuring the agent always runs in demo/local environments. |
-| **Transparent Decision Logging** | Every response includes `Source`, `Confidence`, and `Reason`. Makes debugging, auditing, and iteration straightforward, aligning with assignment evaluation criteria. |
+| **Transparent Decision Logging** | Every response includes `Source` and `Reason`. Makes debugging, auditing, and iteration straightforward, aligning with assignment evaluation criteria. |
 | **Modular Tool Architecture** | Each tool is stateless, independently testable, and easily swappable. Aligns with clean architecture principles and simplifies CI/CD integration. |
 
 ---
