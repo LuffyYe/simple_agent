@@ -99,7 +99,10 @@ def print_help():
     print("   - How to use list comprehensions in Python?")
     print()
 
+"""
+## 🎬 Demo Scenarios (Assignment Deliverables)
 
+"""
 def demo_mode(agent: CompanyAssistantAgent):
     """Demo mode - demonstrate different scenarios"""
     print("\n" + "=" * 60)
@@ -116,6 +119,11 @@ def demo_mode(agent: CompanyAssistantAgent):
             "name": "General knowledge query",
             "query": "How to use list comprehensions in Python?",
             "description": "Test intrinsic knowledge"
+        },
+        {
+            "name": "Web search query",
+            "query": "What is the weather in Beijing today?",
+            "description": "Test web search tool"
         },
         {
             "name": "Ambiguous query",
