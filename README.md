@@ -144,7 +144,7 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
   2. Alias normalization (`vacation` → `paid leave vacation`) for robust matching.
   3. Lightweight `retrieval_probe` (fast RAG lookup) triggers routing to `rag` if confidence ≥ `0.2`.
   4. Falls back to `intrinsic` for general patterns (`explain`, `what is`).
-- **Output:** `{source, confidence, reason, metadata}` for full transparency.
+- **Output:** `{source, reason, metadata}` for full transparency.
 
 ### 🔹 `tools/simple_rag.py` – Local Knowledge Base Retriever
 - **Role:** Retrieves relevant info from local Markdown files without vector databases.
