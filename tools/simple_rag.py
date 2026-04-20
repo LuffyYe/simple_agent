@@ -15,14 +15,14 @@ from tools.utils import clean_text, normalize_query_text, strip_markdown
 
 
 class SimpleRAGTool:
-     """
-     Local knowledge-base retriever with structured results.
+    """
+    Local knowledge-base retriever with structured results.
 
-     The retriever is optimized for a small Markdown knowledge base:
-     - split by headings
-     - chunk within sections
-     - lexical retrieval with BM25 + TF-IDF reranking
-     """
+    The retriever is optimized for a small Markdown knowledge base:
+    - split by headings
+    - chunk within sections
+    - lexical retrieval with BM25 + TF-IDF reranking
+    """
     def __init__(self, knowledge_base_path: str = "./knowledge_base"):
         self.kb_path = knowledge_base_path
         self.chunks: List[Dict] = []
