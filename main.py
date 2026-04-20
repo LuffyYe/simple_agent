@@ -9,7 +9,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from hello_agents import HelloAgentsLLM, ToolRegistry
+from hello_agents import HelloAgentsLLM
 from agent import CompanyAssistantAgent
 from config import Config
 
@@ -19,16 +19,14 @@ def create_agent(config: Config) -> CompanyAssistantAgent:
 
     llm = HelloAgentsLLM()
 
-    # Initialize tool registry
-    tool_registry = ToolRegistry()
-
     # Create Agent
     agent = CompanyAssistantAgent(
         name="CompanyAssistant",
         llm=llm,
-        tool_registry=tool_registry,
+        config=config,
         knowledge_base_path=config.knowledge_base_path,
-        max_steps=config.max_steps
+        enable_logging=True,
+        log_dir="./logs",
     )
 
     return agent
