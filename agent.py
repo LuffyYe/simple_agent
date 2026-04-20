@@ -10,12 +10,11 @@ Capabilities:
 
 import os
 import re
-import json
 import time
 from typing import Optional, Dict
 
 # hello-agents framework imports
-from hello_agents import ReActAgent, HelloAgentsLLM, Config, ToolRegistry
+from hello_agents import HelloAgentsLLM, Config
 
 # Local tool imports
 from tools.router_tool import RouterTool
@@ -36,11 +35,11 @@ from tools.utils import (
 )
 
 
-class CompanyAssistantAgent(ReActAgent):
+class CompanyAssistantAgent:
     """
     Company Assistant Agent
     
-    Built on hello-agents' ReActAgent with extended capabilities:
+    Built on hello-agents with extended capabilities:
     - Intelligent query routing
     - Safety filtering
     - Clarification handling
@@ -51,10 +50,8 @@ class CompanyAssistantAgent(ReActAgent):
         self,
         name: str = "CompanyAssistant",
         llm: Optional[HelloAgentsLLM] = None,
-        tool_registry: Optional[ToolRegistry] = None,
         config: Optional[Config] = None,
         knowledge_base_path: str = "./knowledge_base",
-        max_steps: int = 5,
         enable_logging: bool = True,
         log_dir: str = "./logs"
     ):
@@ -64,18 +61,16 @@ class CompanyAssistantAgent(ReActAgent):
         Args:
             name: Agent name
             llm: LLM instance
-            tool_registry: Tool registry
             config: Configuration object
             knowledge_base_path: Path to knowledge base
-            max_steps: Maximum reasoning steps
             enable_logging: Whether to enable logging
             log_dir: Directory for log files
         """
-        super().__init__(name, llm, tool_registry, config=config)
-        
+
         # Basic configuration
-        self.tool_registry = tool_registry or ToolRegistry()
-        self.max_steps = max_steps
+        self.name = name
+        self.llm = llm
+        self.config = config
         self.knowledge_base_path = ensure_directory(knowledge_base_path)
         
         # Initialize tools
@@ -96,13 +91,9 @@ class CompanyAssistantAgent(ReActAgent):
         
         # 1. Safety tool
         self.safety_tool = SafetyTool()
-        self.tool_registry.register_tool(self.safety_tool)
-        # print(" [SAFETY] SafetyTool registered")
         
         # 2. Router tool
         self.router_tool = RouterTool(llm=self.llm)
-        self.tool_registry.register_tool(self.router_tool)
-        # print(" [ROUTE] RouterTool registered")
         
         # 3. Search tool (if API is configured)
         search_api_key = os.getenv("SEARCH_API_KEY", "")
@@ -110,7 +101,6 @@ class CompanyAssistantAgent(ReActAgent):
             api_provider=os.getenv("SEARCH_PROVIDER", "serpapi"),
             api_key=search_api_key
         )
-        self.tool_registry.register_tool(self.search_tool)
         if not search_api_key:
             print("[SEARCH] SearchTool registered in unavailable mode (missing SEARCH_API_KEY)")
         
@@ -151,8 +141,6 @@ class CompanyAssistantAgent(ReActAgent):
                 knowledge_base_path=self.knowledge_base_path
             )
             self.router_tool.set_retrieval_probe(self.rag_tool.probe)
-            self.tool_registry.register_tool(self.rag_tool)
-            # print("[RAG] SimpleRAGTool registered")
             # print(f"[RAG] Knowledge base path: {self.knowledge_base_path}")
             # print(f" [RAG] Found {len(md_files)} document(s)")
             
@@ -168,8 +156,6 @@ class CompanyAssistantAgent(ReActAgent):
         """Print initialization completion info"""
         print(f"\n [INIT] {self.name} initialization complete")
         print(f" [INIT] Knowledge base: {self.knowledge_base_path}")
-        print(f" [INIT] Available tools: {', '.join(self.tool_registry.list_tools())}")
-        print(f" [INIT] Max steps: {self.max_steps}")
         print()
     
     def run(self, input_text: str, **kwargs) -> str:
@@ -219,7 +205,7 @@ class CompanyAssistantAgent(ReActAgent):
             source = route_result.get("source", "intrinsic")
             reason = route_result.get("reason", "")
             
-            # print(f"[ROUTE] Routing decision: {source}")
+            # print(f"[ROUTE] Routing decision: {source} (confidence: {confidence:.0%})")
             # print(f"[ROUTE] Reason: {reason}")
             self.logger.info(f"Routing decision: {source}, reason: {reason}")
             
@@ -324,11 +310,6 @@ class CompanyAssistantAgent(ReActAgent):
             "server", "endpoint", "token", "key", "password",
             "job", "position", "role", "visa", "product",
             "service", "price", "cost", "deadline", "schedule"
-        }
-        
-        CONTEXT_REQUIRED_VERBS = {
-            "apply", "get", "do", "use", "find", "check",
-            "submit", "request", "access", "join", "register"
         }
         
         AMBIGUOUS_SINGLE_WORDS = {
@@ -678,7 +659,6 @@ class CompanyAssistantAgent(ReActAgent):
         return {
             "name": self.name,
             "conversation_count": len(self.history.history),
-            "tools": self.tool_registry.list_tools(),
             "knowledge_base": self.knowledge_base_path,
             "performance": self.monitor.get_all_stats(),
             "recent_history": self.history.to_dict()
