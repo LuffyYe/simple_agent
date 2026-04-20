@@ -89,7 +89,7 @@ Create a `.env` file in the project root:
 # LLM Configuration (OpenRouter / OpenAI compatible)
 LLM_API_KEY="your_api_key_here"
 LLM_BASE_URL="https://openrouter.ai/api/v1"
-LLM_MODEL_ID="gpt-4o-mini"
+LLM_MODEL_ID="moonshotai/kimi-k2.5"
 
 # Optional: Web Search
 SEARCH_API_KEY="your_serpapi_key_here"
