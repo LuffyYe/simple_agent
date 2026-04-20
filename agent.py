@@ -217,19 +217,17 @@ class CompanyAssistantAgent(ReActAgent):
             context = self.history.get_context(turns=3)
             route_result = self._route_query(input_text, context)
             source = route_result.get("source", "intrinsic")
-            confidence = route_result.get("confidence", 0.5)
             reason = route_result.get("reason", "")
             
-            # print(f"[ROUTE] Routing decision: {source} (confidence: {confidence:.0%})")
+            # print(f"[ROUTE] Routing decision: {source}")
             # print(f"[ROUTE] Reason: {reason}")
-            self.logger.info(f"Routing decision: {source}, confidence: {confidence}, reason: {reason}")
+            self.logger.info(f"Routing decision: {source}, reason: {reason}")
             
             # ========== Step 4: Execute Query ==========
             response = self._execute_query(input_text, route_result)
             
             # ========== Step 5: Format Response ==========
             metadata = {
-                "confidence": confidence,
                 "reason": reason,
                 **route_result.get("metadata", {})
             }
