@@ -24,9 +24,6 @@ class Config:
     # Knowledge Base Configuration
     knowledge_base_path: str = os.getenv("KNOWLEDGE_BASE_PATH", "./knowledge_base")
     
-    # Agent Configuration
-    temperature: float = float(os.getenv("TEMPERATURE", "0.3"))
-    
     @classmethod
     def from_env(cls) -> "Config":
         """Load configuration from environment variables"""
