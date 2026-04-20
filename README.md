@@ -97,7 +97,6 @@ SEARCH_PROVIDER="serpapi"
 
 # Agent Settings
 KNOWLEDGE_BASE_PATH="./knowledge_base"
-TEMPERATURE="0.3"
 ```
 
 ### 2. Install Dependencies
