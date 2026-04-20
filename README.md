@@ -55,7 +55,7 @@ User Query
  ├── 📁 tools/
  │    ├── 📄 router_tool.py      # Deterministic query router + KB probing
  │    ├── 📄 simple_rag.py       # Local Markdown RAG (BM25 + TF-IDF hybrid)
- │    ├── 📄 search_tool.py      # Web search wrapper (SerpAPI / Bing)
+ │    ├── 📄 search_tool.py      # Web search wrapper (SerpAPI)
  │    ├── 📄 safety_tool.py      # Keyword-based safety & compliance filter
  │    └── 📄 utils.py            # Text processing, logging, history, metrics
  └── 📁 knowledge_base/          # Place company .md files here (policies, guidelines, etc.)
