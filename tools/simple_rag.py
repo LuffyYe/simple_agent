@@ -65,13 +65,13 @@ class SimpleRAGTool:
             if in_code:
                 buf.append(line); continue
 
-            m = re.match(r"^(#{1,6})\s+(.*)$", line.strip())
-            if m:
+            matches = re.match(r"^(#{1,6})\s+(.*)$", line.strip())
+            if matches:
                 flush(); buf = []
-                level = len(m.group(1))
-                h = strip_markdown(m.group(2)).strip()
-                if not h: continue
-                stack = stack[:level-1] + [h]
+                level = len(matches.group(1))
+                heading = strip_markdown(matches.group(2)).strip()
+                if not heading: continue
+                stack = stack[:level-1] + [heading]
                 continue
 
             if not re.match(r"^\s*---+\s*$", line):
@@ -89,7 +89,7 @@ class SimpleRAGTool:
         for i in range(0, len(words), step):
             chunk = " ".join(words[i:i+size])
             if not chunk: continue
-            search = f"{section['heading']} {chunk}"
+            search = file"{section['heading']} {chunk}"
             out.append({
                 "filename": file,
                 "filepath": path,
@@ -106,13 +106,13 @@ class SimpleRAGTool:
             return
 
         for root, _, files in os.walk(self.kb_path):
-            for f in files:
-                if not f.endswith((".md", ".txt", ".markdown")): continue
-                p = os.path.join(root, f)
+            for file in files:
+                if not file.endswith((".md", ".txt", ".markdown")): continue
+                path = os.path.join(root, file)
                 try:
-                    text = open(p, encoding="utf-8").read()
-                    for sec in self._split_md(f, text):
-                        self.chunks += self._chunk(f, p, sec)
+                    text = open(path, encoding="utf-8").read()
+                    for sec in self._split_md(file, text):
+                        self.chunks += self._chunk(file, path, sec)
                 except:
                     pass
 
@@ -123,7 +123,7 @@ class SimpleRAGTool:
         if not self.chunks:
             return
 
-        corpus = [c["norm"] for c in self.chunks]
+        corpus = [chunk["norm"] for chunk in self.chunks]
         tokenized = [self._tokenize(x) for x in corpus]
 
         self.bm25 = BM25Okapi(tokenized)
@@ -135,31 +135,31 @@ class SimpleRAGTool:
         x = np.clip(np.asarray(x, float), 0, None)
         return x / x.max() if x.size and x.max() > 0 else np.zeros_like(x)
 
-    def _score(self, q: str) -> List[Dict]:
+    def _score(self, query: str) -> List[Dict]:
         """Score all chunks against the normalized query using a combination of BM25 and TF-IDF cosine similarity, with additional boosts for phrase matches and heading relevance."""
-        toks = self._tokenize(q)
+        toks = self._tokenize(query)
         if not toks or not self.bm25:
             return []
 
         bm = self._norm(self.bm25.get_scores(toks))
-        tf = self._norm(cosine_similarity(self.vectorizer.transform([q]), self.tfidf)[0])
+        tf = self._norm(cosine_similarity(self.vectorizer.transform([query]), self.tfidf)[0])
 
         results = []
-        for i, c in enumerate(self.chunks):
-            hit = sum(1 for t in set(toks) if len(t) > 3 and t in c["norm"])
+        for i, chunk in enumerate(self.chunks):
+            hit = sum(1 for t in set(toks) if len(t) > 3 and t in chunk["norm"])
             phrase = min(0.15, hit * 0.02)
 
-            head_overlap = len(set(toks) & set(self._tokenize(c["heading"])))
+            head_overlap = len(set(toks) & set(self._tokenize(chunk["heading"])))
             head_boost = min(0.12, head_overlap * 0.03)
 
             file_boost = 0
-            fn = c["filename"].lower()
-            if "policy" in q and "policies" in fn: file_boost += 0.08
-            if "guide" in q and "guide" in fn: file_boost += 0.05
+            fn = chunk["filename"].lower()
+            if "policy" in query and "policies" in fn: file_boost += 0.08
+            if "guide" in query and "guide" in fn: file_boost += 0.05
 
             score = 0.65 * bm[i] + 0.35 * tf[i] + phrase + head_boost + file_boost
 
-            results.append({**c, "score": round(score, 4)})
+            results.append({**chunk, "score": round(score, 4)})
 
         return sorted(results, key=lambda x: x["score"], reverse=True)
 
@@ -171,36 +171,36 @@ class SimpleRAGTool:
         thresh = max(min_score, top * 0.55)
 
         out, seen = [], set()
-        for c in scored:
-            if c["score"] < thresh: continue
-            key = (c["filename"], c["heading"])
+        for chunk in scored:
+            if chunk["score"] < thresh: continue
+            key = (chunk["filename"], chunk["heading"])
             if key in seen: continue
 
             seen.add(key)
             out.append({
-                "filename": c["filename"],
-                "filepath": c["filepath"],
-                "heading_path": c["heading"],
-                "score": c["score"],
-                "content": c["content"],
+                "filename": chunk["filename"],
+                "filepath": chunk["filepath"],
+                "heading_path": chunk["heading"],
+                "score": chunk["score"],
+                "content": chunk["content"],
             })
             if len(out) >= k: break
         return out
 
     def search(self, query: str, limit: int=3, min_score: float=0.18) -> Dict:
         """Search the knowledge base for relevant sections based on the query, returning structured results with metadata and content."""
-        q = normalize_query_text(query)
-        if not q:
+        query = normalize_query_text(query)
+        if not query:
             return {"status": "empty_query", "normalized_query": "", "matches": []}
         if not self.bm25:
-            return {"status": "empty_kb", "normalized_query": q, "matches": []}
+            return {"status": "empty_kb", "normalized_query": query, "matches": []}
 
-        scored = self._score(q)
+        scored = self._score(query)
         matches = self._select(scored, limit, min_score)
 
         return {
             "status": "ok" if matches else "no_match",
-            "normalized_query": q,
+            "normalized_query": query,
             "matches": matches,
         }
 
