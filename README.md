@@ -115,7 +115,7 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
 |------|---------|-------------|
 | 💬 **Interactive** | `python main.py --mode interactive` | Real-time CLI chat with history & stats commands |
 | 🎬 **Demo** | `python main.py --mode demo` | Runs the 4 assignment-required scenarios automatically |
-| 📊 **View Stats** | Type `stats` in interactive mode | Shows conversation count, active tools, KB path, and performance metrics |
+| 📊 **View Stats** | Type `stats` in interactive mode | Shows conversation count, KB path, and performance metrics |
 
 > 💡 **CLI Commands:** `help` (guide), `clear` (reset context), `exit`/`quit` (terminate)
 
