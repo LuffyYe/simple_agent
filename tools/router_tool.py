@@ -120,7 +120,6 @@ class RouterTool:
         Returns a routing payload:
             {
                 "source": "rag" | "search" | "intrinsic",
-                "confidence": float,
                 "reason": str,
                 "metadata": dict
             }
@@ -129,7 +128,6 @@ class RouterTool:
         if not query:
             return {
                 "source": "intrinsic",
-                "confidence": 0.5,
                 "reason": "Empty query, defaulting to intrinsic knowledge",
                 "metadata": {"normalized_query": ""},
             }
@@ -151,7 +149,6 @@ class RouterTool:
         if probe_result:
             return {
                 "source": "rag",
-                "confidence": probe_result["confidence"],
                 "reason": "Knowledge-base probe found strong supporting evidence",
                 "metadata": {
                     "normalized_query": normalized_query,
@@ -163,7 +160,6 @@ class RouterTool:
 
         return {
             "source": "intrinsic",
-            "confidence": 0.55,
             "reason": "No strong internal or live-web signals detected",
             "metadata": {
                 "normalized_query": normalized_query,
@@ -182,7 +178,6 @@ class RouterTool:
 
         return {
             "source": "search",
-            "confidence": 0.96,
             "reason": "Detected explicit live-web or time-sensitive intent",
             "metadata": {
                 "normalized_query": normalized_query,
@@ -204,7 +199,6 @@ class RouterTool:
         if len(matched_keywords) >= 2:
             return {
                 "source": "rag",
-                "confidence": 0.94,
                 "reason": "Detected multiple internal-document signals",
                 "metadata": {
                     "normalized_query": normalized_query,
@@ -223,7 +217,6 @@ class RouterTool:
         if any(signal in enriched_query for signal in explicit_company_signals):
             return {
                 "source": "rag",
-                "confidence": 0.88,
                 "reason": "Detected explicit company documentation intent",
                 "metadata": {
                     "normalized_query": normalized_query,
@@ -238,7 +231,6 @@ class RouterTool:
         ):
             return {
                 "source": "rag",
-                "confidence": 0.86,
                 "reason": "Python question references the internal coding style guide",
                 "metadata": {
                     "normalized_query": normalized_query,
@@ -270,7 +262,6 @@ class RouterTool:
             return None
 
         return {
-            "confidence": min(0.92, 0.7 + top_score),
             "metadata": {
                 "filename": top_match.get("filename"),
                 "heading_path": top_match.get("heading_path"),
@@ -287,7 +278,6 @@ class RouterTool:
 
         return {
             "source": "intrinsic",
-            "confidence": 0.72,
             "reason": "Detected a general-knowledge style query without internal or live-web signals",
             "metadata": {
                 "normalized_query": normalized_query,
