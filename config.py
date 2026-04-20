@@ -25,7 +25,6 @@ class Config:
     knowledge_base_path: str = os.getenv("KNOWLEDGE_BASE_PATH", "./knowledge_base")
     
     # Agent Configuration
-    max_steps: int = int(os.getenv("MAX_STEPS", "5"))
     temperature: float = float(os.getenv("TEMPERATURE", "0.3"))
     
     @classmethod
