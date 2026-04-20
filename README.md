@@ -124,7 +124,7 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
 
 ## 🧩 Core Components & Underlying Logic
 
-### 🔹 `agent.py` – Orchestrator & ReAct Extension
+### 🔹 `agent.py` – Orchestrator
 - **Role:** Central execution pipeline extending `hello_agents`.
 - **Logic:** Enforces a strict 6-step flow: `Safety → Clarification → Routing → Execution → Formatting → Logging`. Uses structured prompts with strict constraints to prevent hallucination when answering from retrieved context. Tracks latency, source usage, and turn-limited conversation history.
 
