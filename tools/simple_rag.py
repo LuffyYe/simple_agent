@@ -89,7 +89,7 @@ class SimpleRAGTool:
         for i in range(0, len(words), step):
             chunk = " ".join(words[i:i+size])
             if not chunk: continue
-            search = file"{section['heading']} {chunk}"
+            search = f"{section['heading']} {chunk}"
             out.append({
                 "filename": file,
                 "filepath": path,
