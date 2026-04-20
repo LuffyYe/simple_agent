@@ -97,7 +97,6 @@ SEARCH_PROVIDER="serpapi"
 
 # Agent Settings
 KNOWLEDGE_BASE_PATH="./knowledge_base"
-MAX_STEPS="5"
 TEMPERATURE="0.3"
 ```
 
@@ -126,7 +125,7 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
 ## 🧩 Core Components & Underlying Logic
 
 ### 🔹 `agent.py` – Orchestrator & ReAct Extension
-- **Role:** Central execution pipeline extending `hello_agents` `ReActAgent`.
+- **Role:** Central execution pipeline extending `hello_agents`.
 - **Logic:** Enforces a strict 6-step flow: `Safety → Clarification → Routing → Execution → Formatting → Logging`. Uses structured prompts with strict constraints to prevent hallucination when answering from retrieved context. Tracks latency, source usage, and turn-limited conversation history.
 
 ### 🔹 `main.py` – CLI Entry Point
