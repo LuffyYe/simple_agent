@@ -64,7 +64,6 @@ def interactive_mode(agent: CompanyAssistantAgent):
                 stats = agent.get_stats()
                 print("\nAgent Statistics:")
                 print(f"   Conversation count: {stats['conversation_count']}")
-                print(f"   Available tools: {', '.join(stats['tools'])}")
                 print(f"   Knowledge base: {stats['knowledge_base']}")
                 print()
                 continue
