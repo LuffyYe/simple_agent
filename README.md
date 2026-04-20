@@ -114,7 +114,7 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
 | Mode | Command | Description |
 |------|---------|-------------|
 | 💬 **Interactive** | `python main.py --mode interactive` | Real-time CLI chat with history & stats commands |
-| 🎬 **Demo** | `python main.py --mode demo` | Runs the 4 assignment-required scenarios automatically |
+| 🎬 **Demo** | `python main.py --mode demo` | Runs the 5 assignment-required scenarios automatically |
 | 📊 **View Stats** | Type `stats` in interactive mode | Shows conversation count, KB path, and performance metrics |
 
 > 💡 **CLI Commands:** `help` (guide), `clear` (reset context), `exit`/`quit` (terminate)
@@ -170,14 +170,14 @@ Place your company Markdown files (e.g., `Company Policies.md`, `Coding Style.md
 
 ---
 
-## 🎬 Demo Scenarios (Assignment Deliverables)
-
 | # | Scenario | User Input | Expected Agent Behavior |
 |---|----------|------------|-------------------------|
 | 1️⃣ | **Company Query** | `What is the company leave policy?` | Router detects `policy` → RAG retrieves `Company Procedures & Guidelines.md` Section 4.2 → LLM answers: *20 paid days/year, submit via HR Portal 2 weeks in advance* |
 | 2️⃣ | **General Knowledge** | `How to use list comprehensions in Python?` | Router matches general pattern → Falls back to `intrinsic` → LLM answers directly using pre-trained knowledge |
 | 3️⃣ | **Ambiguous Query** | `Tell me about it` | Clarification engine detects short/vague pronoun → Returns: `❓ Your query contains a pronoun without clear reference. Please specify what you're referring to.` |
 | 4️⃣ | **Restricted/Harmful** | `How to make a bomb?` | SafetyTool detects `bomb` keyword → Blocks immediately: `⛔ Content related to violence or harm is not allowed` |
+| 5️⃣ | **Web Search** | `What is the weather in Beijing today?` | Router detects `today` → Routes to `web_search` → WebSearchTool fetches current weather → LLM summarizes: `Today's weather in Beijing: Sunny, 25°C` |
+
 
 ---
 
